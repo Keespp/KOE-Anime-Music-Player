@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOE - Anime Soundscape</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --bg-main: #09090b; 
+            --bg-secondary: #18181b;
+            --accent-primary: #6366f1;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --glass: rgba(9, 9, 11, 0.7);
+            --glass-card: rgba(255, 255, 255, 0.03);
+        }
+
+        .light-theme {
+            --bg-main: #f8fafc;
+            --bg-secondary: #ffffff;
+            --accent-primary: #4f46e5;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: rgba(0, 0, 0, 0.06);
+            --glass: rgba(255, 255, 255, 0.8);
+            --glass-card: #ffffff;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .active-song {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--accent-primary) !important;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        
+        .fav-active {
+            color: #ec4899 !important;
+            fill: #ec4899 !important;
+        }
+
+        video::backdrop {
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="flex flex-col h-screen">
+        <!-- Barra de Navegación -->
+        <header class="glass-panel sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6 shrink-0 h-20">
+            
+            <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
+                
+                <img src="KOE.png" class="w-10 h-10 object-contain" alt="Logo"> 
+
+                <div>
+                    <h1 class="font-display text-2xl font-bold tracking-tight">KOE</h1>
+                    <p class="text-[10px] text-indigo-500 uppercase tracking-widest font-bold">Soundscape</p>
+                </div>
+            </div>
+
+            <div class="flex-1 max-w-2xl relative">
+                <input id="searchInput" type="text" placeholder="Busca tu anime favorito..." 
+                       class="w-full bg-zinc-900/50 py-3 pl-12 pr-4 rounded-full text-sm border border-white/5 outline-none focus:border-indigo-500 transition-all"
+                       style="background: var(--glass-card); border-color: var(--border);">
+                <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-muted"></i>
+            </div>
+
+            <button id="themeToggle" class="p-2.5 rounded-full hover:bg-white/10 transition-colors">
+                <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+            </button>
+        </header>
+
+        <!-- Contenido Principal -->
+        <main class="flex-1 flex overflow-hidden">
+            <!-- Sidebar -->
+            <aside class="w-64 border-r border-white/5 p-6 space-y-8 hidden lg:block bg-zinc-950/20" style="border-color: var(--border);">
+                <nav class="space-y-1">
+                    <p class="text-[10px] uppercase font-bold text-muted tracking-widest mb-4">Menú</p>
+                    <button id="btnHome" class="w-full flex items-center gap-3 p-3 rounded-xl text-indigo-500 bg-indigo-500/10 font-medium transition-all">
+                        <i data-lucide="home" class="w-5 h-5"></i> Inicio
+                    </button>
+                    <button id="btnFavs" class="w-full flex items-center gap-3 p-3 rounded-xl text-muted hover:text-indigo-500 hover:bg-white/5 transition-all">
+                        <i data-lucide="heart" class="w-5 h-5"></i> Favoritos
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Área de Reproductor y Lista -->
+            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <section class="lg:w-1/2 p-6 flex flex-col overflow-y-auto custom-scroll border-r border-white/5" style="border-color: var(--border);">
+                    <div id="welcomeState" class="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-40">
+                        <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
+                            <i data-lucide="music" class="w-10 h-10"></i>
+                        </div>
+                        <h3 class="text-xl font-bold">Selecciona un tema</h3>
+                        <p class="text-sm">Busca un anime y haz clic en una canción para reproducir</p>
+                    </div>
+
+                    <div id="playerPanel" class="hidden flex-col gap-6">
+                        <div class="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl ring-1 ring-white/10 relative group/video">
+                            <video id="mainVideo" class="w-full h-full object-contain cursor-pointer" playsinline title="Doble clic para pantalla completa"></video>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-start gap-4">
+                                <div class="flex-1">
+                                    <h2 id="detailTitle" class="text-3xl font-bold font-display leading-tight"></h2>
+                                    <p id="detailArtist" class="text-indigo-500 font-medium text-lg"></p>
+                                </div>
+                                <button id="detailFavBtn" class="p-3 rounded-full bg-white/5 hover:bg-white/10 transition-colors group">
+                                    <i data-lucide="heart" id="detailFavIcon" class="w-6 h-6 transition-colors"></i>
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="detailType" class="px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase tracking-wider"></span>
+                                <span id="detailAnime" class="text-sm text-muted"></span>
+                            </div>
+                            <div class="p-5 rounded-2xl bg-white/5 border border-white/5" style="background: var(--glass-card); border-color: var(--border);">
+                                <h4 class="text-[10px] uppercase tracking-widest font-bold text-muted mb-2">Sobre el Anime</h4>
+                                <p id="detailSynopsis" class="text-sm text-muted leading-relaxed italic"></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="lg:w-1/2 flex flex-col bg-black/5">
+                    <div class="p-6 pb-2">
+                        <h3 id="listTitle" class="text-lg font-bold">Explorar</h3>
+                        <p id="listSubtitle" class="text-xs text-muted">Ingresa un anime para empezar</p>
+                    </div>
+                    
+                    <div id="loader" class="hidden p-12 text-center">
+                        <div class="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p class="text-xs text-muted uppercase tracking-widest">Buscando pistas...</p>
+                    </div>
+
+                    <div id="trackList" class="flex-1 overflow-y-auto p-4 space-y-1 custom-scroll"></div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer del Reproductor -->
+        <footer class="h-24 glass-panel flex items-center px-8 shrink-0 z-50">
+            <div class="w-1/3 flex items-center gap-4">
+                <div class="relative group">
+                    <img id="footerCover" src="" class="w-12 h-12 rounded-lg object-cover hidden shadow-lg ring-1 ring-white/10">
+                </div>
+                <div class="min-w-0">
+                    <h4 id="footerTitle" class="text-sm font-bold truncate">KOE Player</h4>
+                    <p id="footerSub" class="text-[10px] text-muted truncate uppercase tracking-tighter">Bienvenido</p>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center max-w-lg">
+                <div class="flex items-center gap-6 mb-2">
+                    <button id="btnPrev" class="text-muted hover:text-indigo-500 transition-colors"><i data-lucide="skip-back" class="w-5 h-5 fill-current"></i></button>
+                    <button id="btnPlay" class="w-11 h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/20">
+                        <i data-lucide="play" id="playIcon" class="w-5 h-5 fill-current ml-0.5"></i>
+                    </button>
+                    <button id="btnNext" class="text-muted hover:text-indigo-500 transition-colors"><i data-lucide="skip-forward" class="w-5 h-5 fill-current"></i></button>
+                </div>
+                <div class="w-full flex items-center gap-3">
+                    <span id="currentTime" class="text-[10px] font-mono text-muted w-10 text-right">0:00</span>
+                    <div class="flex-1 h-1.5 bg-indigo-500/10 rounded-full relative group">
+                        <div id="progressFill" class="absolute h-full bg-indigo-500 rounded-full w-0 pointer-events-none group-hover:bg-indigo-400"></div>
+                        <input id="progressBar" type="range" min="0" max="100" value="0" class="absolute inset-0 w-full h-full opacity-0 z-10">
+                    </div>
+                    <span id="totalTime" class="text-[10px] font-mono text-muted w-10">0:00</span>
+                </div>
+            </div>
+
+            <div class="w-1/3 flex justify-end items-center gap-4">
+                <button id="btnFullscreen" class="p-2 text-muted hover:text-indigo-500 transition-colors" title="Pantalla completa">
+                    <i data-lucide="maximize" class="w-5 h-5"></i>
+                </button>
+                <div class="flex items-center gap-2 group">
+                    <i data-lucide="volume-2" class="w-4 h-4 text-muted group-hover:text-indigo-500"></i>
+                    <!-- VOLUMEN AL 100% POR DEFECTO -->
+                    <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1" class="w-24">
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const state = {
+            tracks: [],
+            currentTrackIndex: -1,
+            activeTrack: null,
+            isPlaying: false,
+            isDragging: false,
+            lastSeekUpdate: 0, 
+            view: 'explore',
+            theme: localStorage.getItem('koeTheme') || 'dark',
+            favorites: JSON.parse(localStorage.getItem('koeFavs')) || []
+        };
+
+        const els = {
+            video: document.getElementById('mainVideo'),
+            trackList: document.getElementById('trackList'),
+            searchInput: document.getElementById('searchInput'),
+            loader: document.getElementById('loader'),
+            welcome: document.getElementById('welcomeState'),
+            player: document.getElementById('playerPanel'),
+            progressBar: document.getElementById('progressBar'),
+            progressFill: document.getElementById('progressFill'),
+            btnPlay: document.getElementById('btnPlay'),
+            footerTitle: document.getElementById('footerTitle'),
+            footerCover: document.getElementById('footerCover'),
+            footerSub: document.getElementById('footerSub'),
+            themeToggle: document.getElementById('themeToggle'),
+            themeIcon: document.getElementById('themeIcon'),
+            detailFavBtn: document.getElementById('detailFavBtn'),
+            btnFullscreen: document.getElementById('btnFullscreen')
+        };
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        window.toggleFav = function(id) {
+            const trackId = String(id);
+            const allPossible = [...state.tracks, ...state.favorites];
+            const track = allPossible.find(t => String(t.id) === trackId);
+            
+            if (!track) return;
+            const idx = state.favorites.findIndex(f => String(f.id) === trackId);
+            
+            if (idx > -1) {
+                state.favorites.splice(idx, 1);
+            } else {
+                state.favorites.push({ ...track });
+            }
+            
+            localStorage.setItem('koeFavs', JSON.stringify(state.favorites));
+            renderList(); 
+            updateFavUI(trackId);
+        };
+
+        function updateFavUI(id) {
+            const trackId = String(id);
+            if (state.activeTrack && String(state.activeTrack.id) === trackId) {
+                const isFav = state.favorites.some(f => String(f.id) === trackId);
+                const detailIcon = document.getElementById('detailFavIcon');
+                
+                if (detailIcon) {
+                    if (isFav) {
+                        detailIcon.classList.add('fav-active');
+                        detailIcon.classList.remove('text-muted');
+                    } else {
+                        detailIcon.classList.remove('fav-active');
+                        detailIcon.classList.add('text-muted');
+                    }
+                    lucide.createIcons();
+                }
+            }
+        }
+
+        async function handleSearch(query) {
+            if (!query.trim()) return;
+            els.loader.classList.remove('hidden');
+            els.trackList.innerHTML = '';
+            document.getElementById('listTitle').innerText = "Buscando...";
+            
+            try {
+                const res = await fetch(`https://api.animethemes.moe/search?q=${encodeURIComponent(query)}&limit=5&fields[search]=anime`);
+                const data = await res.json();
+                const animeList = data.search.anime || [];
+
+                if (animeList.length === 0) {
+                    els.trackList.innerHTML = '<p class="text-center text-muted p-12">No se encontraron resultados.</p>';
+                    return;
+                }
+
+                state.tracks = [];
+                const seen = new Set();
+
+                for (const animeRef of animeList) {
+                    try {
+                        const detailRes = await fetch(`https://api.animethemes.moe/anime/${animeRef.slug}?include=animethemes.animethemeentries.videos,animethemes.song.artists,images`);
+                        const detailData = await detailRes.json();
+                        const anime = detailData.anime;
+                        if (!anime || !anime.animethemes) continue;
+                        const cover = anime.images?.find(i => i.facet === 'Large Cover')?.link || anime.images?.[0]?.link || '';
+
+                        anime.animethemes.forEach(theme => {
+                            const entry = theme.animethemeentries?.[0];
+                            const video = entry?.videos?.[0];
+                            if (video && video.link && !seen.has(theme.id)) {
+                                seen.add(theme.id);
+                                state.tracks.push({
+                                    id: String(theme.id),
+                                    title: theme.song?.title || `Tema ${theme.type}`,
+                                    artist: theme.song?.artists?.map(a => a.name).join(', ') || 'Desconocido',
+                                    anime: anime.name,
+                                    type: theme.type + (theme.sequence || ''),
+                                    cover: cover,
+                                    videoUrl: video.link,
+                                    synopsis: anime.synopsis || "Sin sinopsis disponible."
+                                });
+                            }
+                        });
+                    } catch (e) { console.warn(e); }
+                }
+
+                state.view = 'explore';
+                document.getElementById('listTitle').innerText = `Resultados para "${query}"`;
+                document.getElementById('listSubtitle').innerText = `${state.tracks.length} pistas encontradas`;
+                updateSidebarUI();
+                renderList();
+            } catch (err) {
+                console.error(err);
+            } finally {
+                els.loader.classList.add('hidden');
+            }
+        }
+
+        function renderList() {
+            const list = state.view === 'explore' ? state.tracks : state.favorites;
+            
+            if (list.length === 0) {
+                els.trackList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-12 opacity-30 text-center">
+                        <i data-lucide="music-2" class="w-12 h-12 mb-4"></i>
+                        <p class="text-sm">No hay temas aquí</p>
+                    </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            els.trackList.innerHTML = list.map((track, i) => {
+                const trackId = String(track.id);
+                const isActive = state.activeTrack && String(state.activeTrack.id) === trackId;
+                const isFav = state.favorites.some(f => String(f.id) === trackId);
+                
+                return `
+                    <div onclick="playTrack(${i})" class="group flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer hover:bg-white/5 transition-all ${isActive ? 'active-song' : ''}">
+                        <div class="w-12 h-12 rounded-xl bg-zinc-800 overflow-hidden shrink-0 relative shadow-md">
+                            <img src="${track.cover}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 flex items-center justify-center bg-indigo-600/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="${isActive && state.isPlaying ? 'pause' : 'play'}" class="text-white fill-current w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold truncate ${isActive ? 'text-indigo-400' : ''}">${track.title}</h4>
+                            <p class="text-[10px] text-muted truncate uppercase font-bold tracking-tight">${track.anime}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <span class="text-[9px] px-1.5 py-0.5 rounded border border-white/5 bg-white/5 text-muted">${track.type}</span>
+                             <button 
+                                onclick="event.stopPropagation(); window.toggleFav('${trackId}')" 
+                                class="p-2 hover:bg-white/10 rounded-full transition-all"
+                             >
+                                <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fav-active' : 'text-muted'}"></i>
+                             </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function playTrack(idx) {
+            const list = state.view === 'explore' ? state.tracks : state.favorites;
+            const track = list[idx];
+            if (!track) return;
+
+            state.currentTrackIndex = idx;
+            state.activeTrack = track;
+            
+            els.video.src = track.videoUrl;
+            els.video.play();
+            
+            els.welcome.classList.add('hidden');
+            els.player.classList.remove('hidden');
+            els.player.classList.add('flex');
+            
+            document.getElementById('detailTitle').innerText = track.title;
+            document.getElementById('detailArtist').innerText = track.artist;
+            document.getElementById('detailAnime').innerText = track.anime;
+            document.getElementById('detailType').innerText = track.type;
+            document.getElementById('detailSynopsis').innerText = track.synopsis;
+
+            els.footerTitle.innerText = track.title;
+            els.footerSub.innerText = track.anime;
+            els.footerCover.src = track.cover;
+            els.footerCover.classList.remove('hidden');
+
+            updateFavUI(track.id);
+            renderList();
+        }
+
+        function updatePlayIcon(playing) {
+            state.isPlaying = playing;
+            const playIcon = document.getElementById('playIcon');
+            const headerIcon = document.getElementById('headerPlayIcon');
+            const iconName = playing ? 'pause' : 'play';
+
+            if (playIcon) playIcon.setAttribute('data-lucide', iconName);
+            if (headerIcon) headerIcon.setAttribute('data-lucide', iconName);
+            
+            lucide.createIcons();
+            renderList();
+        }
+
+        function updateSidebarUI() {
+            const btnHome = document.getElementById('btnHome');
+            const btnFavs = document.getElementById('btnFavs');
+            
+            if (state.view === 'explore') {
+                btnHome.classList.add('bg-indigo-500/10', 'text-indigo-500');
+                btnHome.classList.remove('text-muted');
+                btnFavs.classList.remove('bg-indigo-500/10', 'text-indigo-500');
+                btnFavs.classList.add('text-muted');
+            } else {
+                btnFavs.classList.add('bg-indigo-500/10', 'text-indigo-500');
+                btnFavs.classList.remove('text-muted');
+                btnHome.classList.remove('bg-indigo-500/10', 'text-indigo-500');
+                btnHome.classList.add('text-muted');
+                document.getElementById('listTitle').innerText = "Favoritos";
+                document.getElementById('listSubtitle').innerText = `${state.favorites.length} temas guardados`;
+            }
+        }
+
+        function applyTheme() {
+            if (state.theme === 'light') {
+                document.body.classList.add('light-theme');
+                els.themeIcon.setAttribute('data-lucide', 'sun');
+            } else {
+                document.body.classList.remove('light-theme');
+                els.themeIcon.setAttribute('data-lucide', 'moon');
+            }
+            lucide.createIcons();
+        }
+
+        function toggleFullscreen() {
+            if (!els.video.src) return;
+            if (els.video.requestFullscreen) els.video.requestFullscreen();
+            else if (els.video.webkitRequestFullscreen) els.video.webkitRequestFullscreen();
+            else if (els.video.msRequestFullscreen) els.video.msRequestFullscreen();
+        }
+
+        els.searchInput.addEventListener('keypress', e => e.key === 'Enter' && handleSearch(e.target.value));
+        els.themeToggle.addEventListener('click', () => {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('koeTheme', state.theme);
+            applyTheme();
+        });
+
+        els.btnPlay.addEventListener('click', () => {
+            if (!els.video.src) return;
+            els.video.paused ? els.video.play() : els.video.pause();
+        });
+        
+        els.btnFullscreen.addEventListener('click', toggleFullscreen);
+        els.video.addEventListener('dblclick', toggleFullscreen);
+
+        document.getElementById('btnNext').addEventListener('click', () => {
+            const list = state.view === 'explore' ? state.tracks : state.favorites;
+            if (list.length) playTrack((state.currentTrackIndex + 1) % list.length);
+        });
+        
+        document.getElementById('btnPrev').addEventListener('click', () => {
+            const list = state.view === 'explore' ? state.tracks : state.favorites;
+            if (list.length) playTrack((state.currentTrackIndex - 1 + list.length) % list.length);
+        });
+
+        els.progressBar.addEventListener('mousedown', () => state.isDragging = true);
+        els.progressBar.addEventListener('touchstart', () => state.isDragging = true);
+        
+        els.progressBar.addEventListener('input', (e) => {
+            const pct = e.target.value;
+            els.progressFill.style.width = `${pct}%`;
+            
+            if(els.video.duration) {
+                const targetTime = (pct / 100) * els.video.duration;
+                document.getElementById('currentTime').innerText = formatTime(targetTime);
+                
+                const now = Date.now();
+                if (now - state.lastSeekUpdate > 150) {
+                    els.video.currentTime = targetTime;
+                    state.lastSeekUpdate = now;
+                }
+            }
+        });
+
+        els.progressBar.addEventListener('change', (e) => {
+            if(els.video.duration) {
+                els.video.currentTime = (e.target.value / 100) * els.video.duration;
+            }
+            state.isDragging = false;
+        });
+
+        window.addEventListener('mouseup', () => state.isDragging = false);
+        window.addEventListener('touchend', () => state.isDragging = false);
+
+        els.video.onplay = () => updatePlayIcon(true);
+        els.video.onpause = () => updatePlayIcon(false);
+        
+        // REPRODUCCIÓN AUTOMÁTICA AL FINALIZAR
+        els.video.onended = () => {
+            const list = state.view === 'explore' ? state.tracks : state.favorites;
+            if (list.length) {
+                const nextIndex = (state.currentTrackIndex + 1) % list.length;
+                playTrack(nextIndex);
+            }
+        };
+
+        els.video.ontimeupdate = () => {
+            if (state.isDragging) return; 
+            
+            const pct = (els.video.currentTime / els.video.duration) * 100 || 0;
+            els.progressFill.style.width = `${pct}%`;
+            els.progressBar.value = pct;
+            document.getElementById('currentTime').innerText = formatTime(els.video.currentTime);
+            document.getElementById('totalTime').innerText = formatTime(els.video.duration);
+        };
+
+        document.getElementById('volumeRange').addEventListener('input', e => els.video.volume = e.target.value);
+
+        document.getElementById('btnHome').addEventListener('click', () => {
+            state.view = 'explore';
+            updateSidebarUI();
+            renderList();
+        });
+
+        document.getElementById('btnFavs').addEventListener('click', () => {
+            state.view = 'favorites';
+            updateSidebarUI();
+            renderList();
+        });
+
+        els.detailFavBtn.addEventListener('click', () => {
+            if (state.activeTrack) window.toggleFav(state.activeTrack.id);
+        });
+
+        // Inicialización
+        applyTheme();
+        // ESTABLECER VOLUMEN AL 100% (1.0)
+        els.video.volume = 1; 
+        handleSearch('Cyberpunk Edgerunners');
+    </script>
+</body>
+</html>
