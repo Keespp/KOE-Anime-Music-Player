@@ -99,7 +99,6 @@
 </head>
 <body>
 
-    <!-- CAMBIO: Usar 'fixed inset-0' para anclar la app a la ventana visible real -->
     <div id="app" class="flex flex-col fixed inset-0 w-full h-full overflow-hidden">
         
         <!-- Barra de Navegación -->
@@ -189,7 +188,8 @@
                         <div class="flex justify-between items-end">
                             <div>
                                 <h3 id="listTitle" class="text-base md:text-lg font-bold">Explorar</h3>
-                                <p id="listSubtitle" class="text-[10px] md:text-xs text-muted">Resultados</p>
+                                <!-- CAMBIO: Subtítulo dinámico -->
+                                <p id="listSubtitle" class="text-[10px] md:text-xs text-muted">Ingresa un anime para empezar</p>
                             </div>
                         </div>
                     </div>
@@ -204,7 +204,7 @@
             </div>
         </main>
 
-        <!-- Footer del Reproductor: Ahora con altura automática y padding dinámico -->
+        <!-- Footer del Reproductor -->
         <footer class="glass-panel flex items-center px-4 md:px-8 shrink-0 z-50 h-auto py-3 md:py-0 md:h-24 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <!-- Info Pista -->
             <div class="w-1/4 md:w-1/3 flex items-center gap-3">
@@ -329,6 +329,106 @@
             }
         }
 
+        async function fetchRecommendations() {
+            els.loader.classList.remove('hidden');
+            els.trackList.innerHTML = '';
+            
+            const currentYear = new Date().getFullYear();
+            const minYear = 1990;
+            
+            // Generar 3 años aleatorios distintos para maximizar la variedad
+            const randomYears = new Set();
+            while(randomYears.size < 3) {
+                randomYears.add(Math.floor(Math.random() * (currentYear - minYear + 1)) + minYear);
+            }
+            
+            try {
+                // 1. Obtener candidatos de múltiples años en paralelo (buscando 15 por año)
+                const searchPromises = Array.from(randomYears).map(year => 
+                    fetch(`https://api.animethemes.moe/search?q=${year}&fields[search]=anime&limit=15`)
+                        .then(res => res.json())
+                        .then(data => data.search?.anime || [])
+                        .catch(() => [])
+                );
+
+                const searchResults = await Promise.all(searchPromises);
+                
+                // Combinar todos los resultados en una sola lista (potencialmente 45 animes)
+                let allCandidates = searchResults.flat();
+                
+                if (allCandidates.length === 0) throw new Error("No candidates found");
+
+                // Mezcla real (Fisher-Yates) para que el orden sea totalmente impredecible
+                for (let i = allCandidates.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [allCandidates[i], allCandidates[j]] = [allCandidates[j], allCandidates[i]];
+                }
+
+                // Seleccionar los primeros 6 después de barajar
+                // Esto evita hacer llamadas de detalles innecesarias
+                const selectedCandidates = allCandidates.slice(0, 6);
+
+                state.tracks = [];
+                const seen = new Set();
+                
+                // 2. Obtener detalles SOLO de los 6 ganadores
+                const detailPromises = selectedCandidates.map(animeRef => 
+                    fetch(`https://api.animethemes.moe/anime/${animeRef.slug}?include=animethemes.animethemeentries.videos,animethemes.song.artists,images`)
+                        .then(res => res.json())
+                        .catch(() => null)
+                );
+
+                const details = await Promise.all(detailPromises);
+
+                for (const detailData of details) {
+                    if (!detailData || !detailData.anime) continue;
+                    const anime = detailData.anime;
+                    const cover = anime.images?.find(i => i.facet === 'Large Cover')?.link || anime.images?.[0]?.link || '';
+
+                    if (anime.animethemes && anime.animethemes.length > 0) {
+                        const randomThemeIndex = Math.floor(Math.random() * anime.animethemes.length);
+                        const theme = anime.animethemes[randomThemeIndex];
+
+                        if (!theme) continue;
+
+                        const entry = theme.animethemeentries?.[0];
+                        const video = entry?.videos?.[0];
+                        
+                        if (video && video.link && !seen.has(theme.id)) {
+                            seen.add(theme.id);
+                            state.tracks.push({
+                                id: String(theme.id),
+                                title: theme.song?.title || `Tema ${theme.type}`,
+                                artist: theme.song?.artists?.map(a => a.name).join(', ') || 'Desconocido',
+                                anime: anime.name,
+                                type: theme.type + (theme.sequence || ''),
+                                cover: cover,
+                                videoUrl: video.link,
+                                synopsis: anime.synopsis || "Sin sinopsis disponible."
+                            });
+                        }
+                    }
+                }
+                
+                state.view = 'explore';
+                updateSidebarUI();
+                document.getElementById('listSubtitle').innerText = "Mix Aleatorio";
+                renderList(true);
+
+            } catch (err) {
+                console.error(err);
+                els.trackList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-12 opacity-40 text-center">
+                        <i data-lucide="wifi-off" class="w-10 h-10 mb-4"></i>
+                        <p class="text-sm">No se pudo cargar el mix</p>
+                        <button onclick="fetchRecommendations()" class="mt-4 text-xs text-indigo-400 hover:text-indigo-300 underline">Reintentar</button>
+                    </div>`;
+                lucide.createIcons();
+            } finally {
+                els.loader.classList.add('hidden');
+            }
+        }
+
         async function handleSearch(query) {
             if (!query.trim()) return;
             els.loader.classList.remove('hidden');
@@ -388,15 +488,25 @@
             }
         }
 
-        function renderList() {
+        // CAMBIO: Añadido parámetro 'isRecs' para evitar mensaje confuso al inicio
+        function renderList(isRecs = false) {
             const list = state.view === 'explore' ? state.tracks : state.favorites;
             
             if (list.length === 0) {
-                els.trackList.innerHTML = `
-                    <div class="flex flex-col items-center justify-center p-12 opacity-30 text-center">
-                        <i data-lucide="music-2" class="w-12 h-12 mb-4"></i>
-                        <p class="text-sm">No hay temas aquí</p>
-                    </div>`;
+                const isExplore = state.view === 'explore';
+                if (isExplore && !isRecs) {
+                     els.trackList.innerHTML = `
+                        <div class="flex flex-col items-center justify-center p-12 opacity-30 text-center">
+                            <i data-lucide="search" class="w-12 h-12 mb-4"></i>
+                            <p class="text-sm">Busca un anime para comenzar</p>
+                        </div>`;
+                } else if (!isExplore) {
+                    els.trackList.innerHTML = `
+                        <div class="flex flex-col items-center justify-center p-12 opacity-30 text-center">
+                            <i data-lucide="heart-off" class="w-12 h-12 mb-4"></i>
+                            <p class="text-sm">No hay favoritos aún</p>
+                        </div>`;
+                }
                 lucide.createIcons();
                 return;
             }
@@ -640,8 +750,8 @@
 
         applyTheme();
         els.video.volume = 1; 
-        handleSearch('Cyberpunk Edgerunners');
+    
+        fetchRecommendations();
     </script>
 </body>
 </html>
-
