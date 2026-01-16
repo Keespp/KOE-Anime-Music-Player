@@ -99,12 +99,13 @@
 </head>
 <body>
 
+    <!-- CAMBIO: Usar 'fixed inset-0' para anclar la app a la ventana visible real -->
     <div id="app" class="flex flex-col fixed inset-0 w-full h-full overflow-hidden">
         
         <!-- Barra de Navegación -->
         <header class="glass-panel sticky top-0 z-40 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-6 shrink-0 h-16 md:h-20">
             <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
-                  <img src="KOE.png" class="w-10 h-10 object-contain" alt="Logo"> 
+                <img src="KOE.png" class="w-10 h-10 object-contain" alt="Logo"> 
                 <div class="hidden md:block">
                     <h1 class="font-display text-2xl font-bold tracking-tight">KOE</h1>
                     <p class="text-[10px] text-indigo-500 uppercase tracking-widest font-bold">Soundscape</p>
@@ -386,6 +387,8 @@
                     const cover = anime.images?.find(i => i.facet === 'Large Cover')?.link || anime.images?.[0]?.link || '';
 
                     if (anime.animethemes && anime.animethemes.length > 0) {
+                        // Seleccionar UN tema aleatorio de los disponibles para este anime
+                        // (Antes siempre era el primero, lo que hacía repetitivos los Openings)
                         const randomThemeIndex = Math.floor(Math.random() * anime.animethemes.length);
                         const theme = anime.animethemes[randomThemeIndex];
 
@@ -436,6 +439,7 @@
             document.getElementById('listTitle').innerText = "Buscando...";
             
             try {
+                // 1. Obtener lista de animes primero
                 const res = await fetch(`https://api.animethemes.moe/search?q=${encodeURIComponent(query)}&limit=5&fields[search]=anime`);
                 const data = await res.json();
                 const animeList = data.search.anime || [];
@@ -448,32 +452,44 @@
                 state.tracks = [];
                 const seen = new Set();
 
-                for (const animeRef of animeList) {
-                    try {
-                        const detailRes = await fetch(`https://api.animethemes.moe/anime/${animeRef.slug}?include=animethemes.animethemeentries.videos,animethemes.song.artists,images`);
-                        const detailData = await detailRes.json();
-                        const anime = detailData.anime;
-                        if (!anime || !anime.animethemes) continue;
-                        const cover = anime.images?.find(i => i.facet === 'Large Cover')?.link || anime.images?.[0]?.link || '';
+                // 2. Fetch en PARALELO (Optimización clave)
+                const detailPromises = animeList.map(animeRef => 
+                    fetch(`https://api.animethemes.moe/anime/${animeRef.slug}?include=animethemes.animethemeentries.videos,animethemes.song.artists,images`)
+                        .then(res => res.json())
+                        .catch(e => {
+                            console.warn(e);
+                            return null;
+                        })
+                );
 
-                        anime.animethemes.forEach(theme => {
-                            const entry = theme.animethemeentries?.[0];
-                            const video = entry?.videos?.[0];
-                            if (video && video.link && !seen.has(theme.id)) {
-                                seen.add(theme.id);
-                                state.tracks.push({
-                                    id: String(theme.id),
-                                    title: theme.song?.title || `Tema ${theme.type}`,
-                                    artist: theme.song?.artists?.map(a => a.name).join(', ') || 'Desconocido',
-                                    anime: anime.name,
-                                    type: theme.type + (theme.sequence || ''),
-                                    cover: cover,
-                                    videoUrl: video.link,
-                                    synopsis: anime.synopsis || "Sin sinopsis disponible."
-                                });
-                            }
-                        });
-                    } catch (e) { console.warn(e); }
+                const detailsResults = await Promise.all(detailPromises);
+
+                // 3. Procesar resultados
+                for (const detailData of detailsResults) {
+                    if (!detailData || !detailData.anime) continue;
+                    
+                    const anime = detailData.anime;
+                    if (!anime.animethemes) continue;
+                    
+                    const cover = anime.images?.find(i => i.facet === 'Large Cover')?.link || anime.images?.[0]?.link || '';
+
+                    anime.animethemes.forEach(theme => {
+                        const entry = theme.animethemeentries?.[0];
+                        const video = entry?.videos?.[0];
+                        if (video && video.link && !seen.has(theme.id)) {
+                            seen.add(theme.id);
+                            state.tracks.push({
+                                id: String(theme.id),
+                                title: theme.song?.title || `Tema ${theme.type}`,
+                                artist: theme.song?.artists?.map(a => a.name).join(', ') || 'Desconocido',
+                                anime: anime.name,
+                                type: theme.type + (theme.sequence || ''),
+                                cover: cover,
+                                videoUrl: video.link,
+                                synopsis: anime.synopsis || "Sin sinopsis disponible."
+                            });
+                        }
+                    });
                 }
 
                 state.view = 'explore';
@@ -483,6 +499,7 @@
                 renderList();
             } catch (err) {
                 console.error(err);
+                els.trackList.innerHTML = '<p class="text-center text-muted p-12">Ocurrió un error en la búsqueda.</p>';
             } finally {
                 els.loader.classList.add('hidden');
             }
@@ -494,6 +511,8 @@
             
             if (list.length === 0) {
                 const isExplore = state.view === 'explore';
+                // Si es recomendación y falló (0 items), ya lo maneja el catch. 
+                // Si es búsqueda normal vacía:
                 if (isExplore && !isRecs) {
                      els.trackList.innerHTML = `
                         <div class="flex flex-col items-center justify-center p-12 opacity-30 text-center">
@@ -750,7 +769,8 @@
 
         applyTheme();
         els.video.volume = 1; 
-    
+        
+        // Cargar recomendaciones iniciales
         fetchRecommendations();
     </script>
 </body>
