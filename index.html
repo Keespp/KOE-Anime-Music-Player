@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>KOE - Anime Soundscape</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -31,11 +31,17 @@
             --glass-card: #ffffff;
         }
 
-        body {
+        /* SOLUCIÓN CRÍTICA: Bloquear el scroll del body y forzar altura fija */
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            position: fixed; /* Esto evita que la barra de direcciones empuje el contenido */
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg-main);
             color: var(--text-main);
-            overflow: hidden;
             transition: background-color 0.4s ease, color 0.4s ease;
         }
 
@@ -84,40 +90,46 @@
         video::backdrop {
             background-color: black;
         }
+
+        @media (max-width: 768px) {
+            .mobile-hide { display: none; }
+            .mobile-stack { flex-direction: column; }
+        }
     </style>
 </head>
 <body>
 
-    <div id="app" class="flex flex-col h-screen">
+    <!-- CAMBIO: Usar 'fixed inset-0' para anclar la app a la ventana visible real -->
+    <div id="app" class="flex flex-col fixed inset-0 w-full h-full overflow-hidden">
+        
         <!-- Barra de Navegación -->
-        <header class="glass-panel sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6 shrink-0 h-20">
-            
+        <header class="glass-panel sticky top-0 z-40 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-6 shrink-0 h-16 md:h-20">
             <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
-                
-                <img src="KOE.png" class="w-10 h-10 object-contain" alt="Logo"> 
-
-                <div>
+                <div id="appLogo" class="w-8 h-8 md:w-10 md:h-10 bg-indigo-500 rounded-lg flex items-center justify-center shadow-lg shrink-0">
+                    <i data-lucide="play" id="headerPlayIcon" class="text-white fill-current w-4 h-4 md:w-5 md:h-5"></i>
+                </div>
+                <div class="hidden md:block">
                     <h1 class="font-display text-2xl font-bold tracking-tight">KOE</h1>
                     <p class="text-[10px] text-indigo-500 uppercase tracking-widest font-bold">Soundscape</p>
                 </div>
             </div>
 
             <div class="flex-1 max-w-2xl relative">
-                <input id="searchInput" type="text" placeholder="Busca tu anime favorito..." 
-                       class="w-full bg-zinc-900/50 py-3 pl-12 pr-4 rounded-full text-sm border border-white/5 outline-none focus:border-indigo-500 transition-all"
+                <input id="searchInput" type="text" placeholder="Buscar anime..." 
+                       class="w-full bg-zinc-900/50 py-2 md:py-3 pl-10 md:pl-12 pr-4 rounded-full text-xs md:text-sm border border-white/5 outline-none focus:border-indigo-500 transition-all"
                        style="background: var(--glass-card); border-color: var(--border);">
-                <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-muted"></i>
+                <i data-lucide="search" class="absolute left-3 md:left-4 top-2.5 md:top-3.5 w-4 h-4 text-muted"></i>
             </div>
 
-            <button id="themeToggle" class="p-2.5 rounded-full hover:bg-white/10 transition-colors">
+            <button id="themeToggle" class="p-2 md:p-2.5 rounded-full hover:bg-white/10 transition-colors shrink-0">
                 <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
             </button>
         </header>
 
         <!-- Contenido Principal -->
-        <main class="flex-1 flex overflow-hidden">
-            <!-- Sidebar -->
-            <aside class="w-64 border-r border-white/5 p-6 space-y-8 hidden lg:block bg-zinc-950/20" style="border-color: var(--border);">
+        <main class="flex-1 flex overflow-hidden relative min-h-0">
+            <!-- Sidebar (Escritorio) -->
+            <aside class="w-64 border-r border-white/5 p-6 space-y-8 hidden lg:block bg-zinc-950/20 shrink-0" style="border-color: var(--border);">
                 <nav class="space-y-1">
                     <p class="text-[10px] uppercase font-bold text-muted tracking-widest mb-4">Menú</p>
                     <button id="btnHome" class="w-full flex items-center gap-3 p-3 rounded-xl text-indigo-500 bg-indigo-500/10 font-medium transition-all">
@@ -130,96 +142,110 @@
             </aside>
 
             <!-- Área de Reproductor y Lista -->
-            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <section class="lg:w-1/2 p-6 flex flex-col overflow-y-auto custom-scroll border-r border-white/5" style="border-color: var(--border);">
-                    <div id="welcomeState" class="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-40">
-                        <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
-                            <i data-lucide="music" class="w-10 h-10"></i>
+            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden w-full">
+                <!-- Panel Reproductor -->
+                <section class="w-full lg:w-1/2 p-4 md:p-6 flex flex-col shrink-0 lg:overflow-y-auto custom-scroll border-b lg:border-b-0 lg:border-r border-white/5 max-h-[40vh] lg:max-h-none overflow-y-auto" style="border-color: var(--border);">
+                    <div id="welcomeState" class="flex-1 flex flex-col items-center justify-center text-center p-4 md:p-8 opacity-40 min-h-[150px]">
+                        <div class="w-12 h-12 md:w-20 md:h-20 bg-white/5 rounded-full flex items-center justify-center mb-3 md:mb-6">
+                            <i data-lucide="music" class="w-6 h-6 md:w-10 md:h-10"></i>
                         </div>
-                        <h3 class="text-xl font-bold">Selecciona un tema</h3>
-                        <p class="text-sm">Busca un anime y haz clic en una canción para reproducir</p>
+                        <h3 class="text-base md:text-xl font-bold">Selecciona un tema</h3>
+                        <p class="text-xs md:text-sm">Busca un anime para empezar</p>
                     </div>
 
-                    <div id="playerPanel" class="hidden flex-col gap-6">
-                        <div class="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl ring-1 ring-white/10 relative group/video">
+                    <div id="playerPanel" class="hidden flex-col gap-4 md:gap-6">
+                        <div class="aspect-video w-full rounded-xl md:rounded-2xl overflow-hidden bg-black shadow-2xl ring-1 ring-white/10 relative group/video">
                             <video id="mainVideo" class="w-full h-full object-contain cursor-pointer" playsinline title="Doble clic para pantalla completa"></video>
                         </div>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-start gap-4">
-                                <div class="flex-1">
-                                    <h2 id="detailTitle" class="text-3xl font-bold font-display leading-tight"></h2>
-                                    <p id="detailArtist" class="text-indigo-500 font-medium text-lg"></p>
+                        <div class="space-y-2 md:space-y-4">
+                            <div class="flex justify-between items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <h2 id="detailTitle" class="text-xl md:text-3xl font-bold font-display leading-tight truncate"></h2>
+                                    <p id="detailArtist" class="text-indigo-500 font-medium text-sm md:text-lg truncate"></p>
                                 </div>
-                                <button id="detailFavBtn" class="p-3 rounded-full bg-white/5 hover:bg-white/10 transition-colors group">
-                                    <i data-lucide="heart" id="detailFavIcon" class="w-6 h-6 transition-colors"></i>
+                                <button id="detailFavBtn" class="p-2 md:p-3 rounded-full bg-white/5 hover:bg-white/10 transition-colors group shrink-0">
+                                    <i data-lucide="heart" id="detailFavIcon" class="w-5 h-5 md:w-6 md:h-6 transition-colors"></i>
                                 </button>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span id="detailType" class="px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase tracking-wider"></span>
-                                <span id="detailAnime" class="text-sm text-muted"></span>
+                                <span id="detailType" class="px-1.5 py-0.5 md:px-2 md:py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider"></span>
+                                <span id="detailAnime" class="text-xs md:text-sm text-muted truncate"></span>
                             </div>
-                            <div class="p-5 rounded-2xl bg-white/5 border border-white/5" style="background: var(--glass-card); border-color: var(--border);">
+                            <div class="hidden md:block p-5 rounded-2xl bg-white/5 border border-white/5" style="background: var(--glass-card); border-color: var(--border);">
                                 <h4 class="text-[10px] uppercase tracking-widest font-bold text-muted mb-2">Sobre el Anime</h4>
-                                <p id="detailSynopsis" class="text-sm text-muted leading-relaxed italic"></p>
+                                <p id="detailSynopsis" class="text-sm text-muted leading-relaxed italic line-clamp-4"></p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="lg:w-1/2 flex flex-col bg-black/5">
-                    <div class="p-6 pb-2">
-                        <h3 id="listTitle" class="text-lg font-bold">Explorar</h3>
-                        <p id="listSubtitle" class="text-xs text-muted">Ingresa un anime para empezar</p>
+                <!-- Panel Lista -->
+                <section class="w-full lg:w-1/2 flex flex-col bg-black/5 flex-1 overflow-hidden">
+                    <div class="p-4 md:p-6 pb-2 shrink-0">
+                        <!-- Menú Móvil -->
+                        <div class="lg:hidden grid grid-cols-2 gap-2 mb-3 bg-white/5 p-1 rounded-xl">
+                            <button id="btnMobileHome" class="py-2 rounded-lg bg-indigo-500 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">Inicio</button>
+                            <button id="btnMobileFavs" class="py-2 rounded-lg text-muted hover:text-white text-xs font-bold uppercase tracking-wider transition-colors">Favoritos</button>
+                        </div>
+
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <h3 id="listTitle" class="text-base md:text-lg font-bold">Explorar</h3>
+                                <p id="listSubtitle" class="text-[10px] md:text-xs text-muted">Resultados</p>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div id="loader" class="hidden p-12 text-center">
-                        <div class="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                        <p class="text-xs text-muted uppercase tracking-widest">Buscando pistas...</p>
+                    <div id="loader" class="hidden p-8 md:p-12 text-center">
+                        <div class="animate-spin w-6 h-6 md:w-8 md:h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p class="text-[10px] md:text-xs text-muted uppercase tracking-widest">Cargando...</p>
                     </div>
 
-                    <div id="trackList" class="flex-1 overflow-y-auto p-4 space-y-1 custom-scroll"></div>
+                    <div id="trackList" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-1 custom-scroll"></div>
                 </section>
             </div>
         </main>
 
-        <!-- Footer del Reproductor -->
-        <footer class="h-24 glass-panel flex items-center px-8 shrink-0 z-50">
-            <div class="w-1/3 flex items-center gap-4">
-                <div class="relative group">
-                    <img id="footerCover" src="" class="w-12 h-12 rounded-lg object-cover hidden shadow-lg ring-1 ring-white/10">
+        <!-- Footer del Reproductor: Ahora con altura automática y padding dinámico -->
+        <footer class="glass-panel flex items-center px-4 md:px-8 shrink-0 z-50 h-auto py-3 md:py-0 md:h-24 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <!-- Info Pista -->
+            <div class="w-1/4 md:w-1/3 flex items-center gap-3">
+                <div class="relative group hidden sm:block">
+                    <img id="footerCover" src="" class="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover hidden shadow-lg ring-1 ring-white/10">
                 </div>
                 <div class="min-w-0">
-                    <h4 id="footerTitle" class="text-sm font-bold truncate">KOE Player</h4>
-                    <p id="footerSub" class="text-[10px] text-muted truncate uppercase tracking-tighter">Bienvenido</p>
+                    <h4 id="footerTitle" class="text-xs md:text-sm font-bold truncate">KOE Player</h4>
+                    <p id="footerSub" class="text-[9px] md:text-[10px] text-muted truncate uppercase tracking-tighter hidden sm:block">Bienvenido</p>
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col items-center max-w-lg">
-                <div class="flex items-center gap-6 mb-2">
-                    <button id="btnPrev" class="text-muted hover:text-indigo-500 transition-colors"><i data-lucide="skip-back" class="w-5 h-5 fill-current"></i></button>
-                    <button id="btnPlay" class="w-11 h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/20">
-                        <i data-lucide="play" id="playIcon" class="w-5 h-5 fill-current ml-0.5"></i>
+            <!-- Controles Centrales -->
+            <div class="flex-1 flex flex-col items-center max-w-lg px-2">
+                <div class="flex items-center gap-4 md:gap-6 mb-1 md:mb-2">
+                    <button id="btnPrev" class="p-1 md:p-0 text-muted hover:text-indigo-500 transition-colors"><i data-lucide="skip-back" class="w-4 h-4 md:w-5 md:h-5 fill-current"></i></button>
+                    <button id="btnPlay" class="w-9 h-9 md:w-11 md:h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/20">
+                        <i data-lucide="play" id="playIcon" class="w-4 h-4 md:w-5 md:h-5 fill-current ml-0.5"></i>
                     </button>
-                    <button id="btnNext" class="text-muted hover:text-indigo-500 transition-colors"><i data-lucide="skip-forward" class="w-5 h-5 fill-current"></i></button>
+                    <button id="btnNext" class="p-1 md:p-0 text-muted hover:text-indigo-500 transition-colors"><i data-lucide="skip-forward" class="w-4 h-4 md:w-5 md:h-5 fill-current"></i></button>
                 </div>
-                <div class="w-full flex items-center gap-3">
-                    <span id="currentTime" class="text-[10px] font-mono text-muted w-10 text-right">0:00</span>
-                    <div class="flex-1 h-1.5 bg-indigo-500/10 rounded-full relative group">
+                <div class="w-full flex items-center gap-2 md:gap-3">
+                    <span id="currentTime" class="text-[9px] md:text-[10px] font-mono text-muted w-8 md:w-10 text-right">0:00</span>
+                    <div class="flex-1 h-1 md:h-1.5 bg-indigo-500/10 rounded-full relative group touch-none"> 
                         <div id="progressFill" class="absolute h-full bg-indigo-500 rounded-full w-0 pointer-events-none group-hover:bg-indigo-400"></div>
-                        <input id="progressBar" type="range" min="0" max="100" value="0" class="absolute inset-0 w-full h-full opacity-0 z-10">
+                        <input id="progressBar" type="range" min="0" max="100" value="0" class="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer">
                     </div>
-                    <span id="totalTime" class="text-[10px] font-mono text-muted w-10">0:00</span>
+                    <span id="totalTime" class="text-[9px] md:text-[10px] font-mono text-muted w-8 md:w-10">0:00</span>
                 </div>
             </div>
 
-            <div class="w-1/3 flex justify-end items-center gap-4">
+            <!-- Controles Derecha -->
+            <div class="w-1/4 md:w-1/3 flex justify-end items-center gap-4">
                 <button id="btnFullscreen" class="p-2 text-muted hover:text-indigo-500 transition-colors" title="Pantalla completa">
-                    <i data-lucide="maximize" class="w-5 h-5"></i>
+                    <i data-lucide="maximize" class="w-4 h-4 md:w-5 md:h-5"></i>
                 </button>
-                <div class="flex items-center gap-2 group">
+                <div class="hidden md:flex items-center gap-2 group">
                     <i data-lucide="volume-2" class="w-4 h-4 text-muted group-hover:text-indigo-500"></i>
-                    <!-- VOLUMEN AL 100% POR DEFECTO -->
-                    <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1" class="w-24">
+                    <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1" class="w-20 md:w-24">
                 </div>
             </div>
         </footer>
@@ -254,7 +280,10 @@
             themeToggle: document.getElementById('themeToggle'),
             themeIcon: document.getElementById('themeIcon'),
             detailFavBtn: document.getElementById('detailFavBtn'),
-            btnFullscreen: document.getElementById('btnFullscreen')
+            btnFullscreen: document.getElementById('btnFullscreen'),
+            // Botones Móviles
+            btnMobileHome: document.getElementById('btnMobileHome'),
+            btnMobileFavs: document.getElementById('btnMobileFavs')
         };
 
         function formatTime(seconds) {
@@ -380,24 +409,24 @@
                 const isFav = state.favorites.some(f => String(f.id) === trackId);
                 
                 return `
-                    <div onclick="playTrack(${i})" class="group flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer hover:bg-white/5 transition-all ${isActive ? 'active-song' : ''}">
-                        <div class="w-12 h-12 rounded-xl bg-zinc-800 overflow-hidden shrink-0 relative shadow-md">
+                    <div onclick="playTrack(${i})" class="group flex items-center gap-3 md:gap-4 p-2 md:p-3.5 rounded-xl md:rounded-2xl cursor-pointer hover:bg-white/5 transition-all ${isActive ? 'active-song' : ''}">
+                        <div class="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-zinc-800 overflow-hidden shrink-0 relative shadow-md">
                             <img src="${track.cover}" class="w-full h-full object-cover">
                             <div class="absolute inset-0 flex items-center justify-center bg-indigo-600/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i data-lucide="${isActive && state.isPlaying ? 'pause' : 'play'}" class="text-white fill-current w-4 h-4"></i>
+                                <i data-lucide="${isActive && state.isPlaying ? 'pause' : 'play'}" class="text-white fill-current w-3 h-3 md:w-4 md:h-4"></i>
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="text-sm font-bold truncate ${isActive ? 'text-indigo-400' : ''}">${track.title}</h4>
-                            <p class="text-[10px] text-muted truncate uppercase font-bold tracking-tight">${track.anime}</p>
+                            <h4 class="text-xs md:text-sm font-bold truncate ${isActive ? 'text-indigo-400' : ''}">${track.title}</h4>
+                            <p class="text-[9px] md:text-[10px] text-muted truncate uppercase font-bold tracking-tight">${track.anime}</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                             <span class="text-[9px] px-1.5 py-0.5 rounded border border-white/5 bg-white/5 text-muted">${track.type}</span>
+                        <div class="flex items-center gap-1 md:gap-2">
+                             <span class="hidden sm:inline-block text-[9px] px-1.5 py-0.5 rounded border border-white/5 bg-white/5 text-muted">${track.type}</span>
                              <button 
                                 onclick="event.stopPropagation(); window.toggleFav('${trackId}')" 
                                 class="p-2 hover:bg-white/10 rounded-full transition-all"
                              >
-                                <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fav-active' : 'text-muted'}"></i>
+                                <i data-lucide="heart" class="w-3 h-3 md:w-4 md:h-4 ${isFav ? 'fav-active' : 'text-muted'}"></i>
                              </button>
                         </div>
                     </div>
@@ -453,6 +482,7 @@
             const btnHome = document.getElementById('btnHome');
             const btnFavs = document.getElementById('btnFavs');
             
+            // Actualizar botones de escritorio
             if (state.view === 'explore') {
                 btnHome.classList.add('bg-indigo-500/10', 'text-indigo-500');
                 btnHome.classList.remove('text-muted');
@@ -463,6 +493,23 @@
                 btnFavs.classList.remove('text-muted');
                 btnHome.classList.remove('bg-indigo-500/10', 'text-indigo-500');
                 btnHome.classList.add('text-muted');
+            }
+
+            // Actualizar botones móviles
+            if (state.view === 'explore') {
+                els.btnMobileHome.classList.add('bg-indigo-500', 'text-white', 'shadow-sm');
+                els.btnMobileHome.classList.remove('text-muted', 'hover:text-white');
+                els.btnMobileFavs.classList.remove('bg-indigo-500', 'text-white', 'shadow-sm');
+                els.btnMobileFavs.classList.add('text-muted', 'hover:text-white');
+                
+                document.getElementById('listTitle').innerText = "Explorar";
+                document.getElementById('listSubtitle').innerText = `${state.tracks.length} resultados`;
+            } else {
+                els.btnMobileFavs.classList.add('bg-indigo-500', 'text-white', 'shadow-sm');
+                els.btnMobileFavs.classList.remove('text-muted', 'hover:text-white');
+                els.btnMobileHome.classList.remove('bg-indigo-500', 'text-white', 'shadow-sm');
+                els.btnMobileHome.classList.add('text-muted', 'hover:text-white');
+
                 document.getElementById('listTitle').innerText = "Favoritos";
                 document.getElementById('listSubtitle').innerText = `${state.favorites.length} temas guardados`;
             }
@@ -543,7 +590,6 @@
         els.video.onplay = () => updatePlayIcon(true);
         els.video.onpause = () => updatePlayIcon(false);
         
-        // REPRODUCCIÓN AUTOMÁTICA AL FINALIZAR
         els.video.onended = () => {
             const list = state.view === 'explore' ? state.tracks : state.favorites;
             if (list.length) {
@@ -564,6 +610,7 @@
 
         document.getElementById('volumeRange').addEventListener('input', e => els.video.volume = e.target.value);
 
+        // Listeners Escritorio
         document.getElementById('btnHome').addEventListener('click', () => {
             state.view = 'explore';
             updateSidebarUI();
@@ -576,13 +623,24 @@
             renderList();
         });
 
+        // Listeners Móviles
+        els.btnMobileHome.addEventListener('click', () => {
+            state.view = 'explore';
+            updateSidebarUI();
+            renderList();
+        });
+
+        els.btnMobileFavs.addEventListener('click', () => {
+            state.view = 'favorites';
+            updateSidebarUI();
+            renderList();
+        });
+
         els.detailFavBtn.addEventListener('click', () => {
             if (state.activeTrack) window.toggleFav(state.activeTrack.id);
         });
 
-        // Inicialización
         applyTheme();
-        // ESTABLECER VOLUMEN AL 100% (1.0)
         els.video.volume = 1; 
         handleSearch('Cyberpunk Edgerunners');
     </script>
