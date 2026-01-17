@@ -1,37 +1,36 @@
 # 🎵 KOE - Anime Soundscape
 
-**KOE** (del japonés *声 - Voz*) es un reproductor web moderno y minimalista diseñado para los amantes del anime. Permite buscar y reproducir openings, endings y temas originales (OST) con una experiencia visual inmersiva.
+**KOE** (from Japanese *声 - Voice*) is a modern and minimalist web music player designed for anime lovers. It allows you to search and play anime openings, endings, and original soundtracks (OST) with an immersive visual experience.
 
-![Versión](https://img.shields.io/badge/Version-1.0.0-6366f1)
-![Licencia](https://img.shields.io/badge/License-MIT-green)
-![Tecnologías](https://img.shields.io/badge/Tech-TailwindCSS|JS|HTML-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-6366f1)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Tech](https://img.shields.io/badge/Tech-TailwindCSS|JS|HTML-blue)
 
 ---
 
-## ✨ Lo que puedes hacer en KOE
-- 🔍 **Búsqueda instantánea:** Encuentra temas de tus series favoritas (como *Naruto*, *Cyberpunk*, etc.).
-- ❤️ **Lista de Favoritos:** Guarda tus canciones preferidas para escucharlas cuando quieras (se guardan en tu navegador).
-- 🌓 **Modo Claro/Oscuro:** Cambia el estilo visual según tu preferencia.
-- 🎬 **Experiencia Inmersiva:** Reproductor de video integrado con soporte para pantalla completa.
-- 📱 **Totalmente Responsivo:** Úsalo en tu computadora o desde tu celular.
+## ✨ What you can do with KOE
+- 🔍 **Instant Search:** Find songs from your favorite anime series (such as *Naruto*, *Cyberpunk*, etc.).
+- ❤️ **Favorites List:** Save your favorite tracks and listen to them anytime (stored locally in your browser).
+- 🌓 **Light / Dark Mode:** Switch between visual themes according to your preference.
+- 🎬 **Immersive Experience:** Built-in video player with fullscreen support.
+- 📱 **Fully Responsive:** Use it on desktop or mobile devices.
 
-## 🛠️ Tecnologías
-Este proyecto fue construido utilizando:
-* **HTML5 / JavaScript** (Lógica del reproductor)
-* **Tailwind CSS** (Diseño moderno y minimalista)
-* **Lucide Icons** (Iconografía limpia)
-* **AnimeThemes API** (Base de datos de música y videos)
+## 🛠️ Technologies
+This project was built using:
+- **HTML5 / JavaScript** (Player logic)
+- **Tailwind CSS** (Modern and minimalist design)
+- **Lucide Icons** (Clean iconography)
+- **AnimeThemes API** (Music and video database)
 
-## 🚀 Vista Previa
-Puedes probar la aplicación en vivo aquí:  
-👉 **[https://keespp.github.io/KOE-Anime-Music-Player/](https://keespp.github.io/KOE-Anime-Music-Player/)**
+## 🚀 Live Demo
+Try the application here:  
+👉 **https://keespp.github.io/KOE-Anime-Music-Player/**
 
-## 🛠️ Tecnologías Usadas
-- **HTML5 & CSS3** (Estructura y estilos personalizados).
-- **Tailwind CSS** (Framework de diseño adaptable).
-- **JavaScript (Vanilla)** (Lógica de reproducción, búsqueda y gestión de favoritos).
-- **Lucide Icons** (Iconografía moderna).
-- **AnimeThemes API** (Fuente de datos y videos).
+## 📢 Community & Updates
+Join the official channels to receive updates, news, and share feedback:
 
-## 👨‍💻 Sobre el Autor
-Proyecto creado por **Keespp**, desarrollador de software.
+- 💬 **WhatsApp Channel:** https://whatsapp.com/channel/0029VbBb01AEawdieoBDY22x  
+- 📣 **Telegram Channel:** https://t.me/+9fichrZrKH4yMjMx  
+
+## 👨‍💻 About the Author
+Project created by **Keespp**, software developer.
